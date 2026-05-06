@@ -1,56 +1,57 @@
 pipeline {
     agent any
 
-    environment {
-        APP_NAME = 'lab14-app'
-        VERSION  = "1.0.${BUILD_NUMBER}"
-    }
-
     stages {
 
         stage('Checkout') {
             steps {
-                echo "Starting build for ${APP_NAME} version ${VERSION}"
-                echo "Build URL: ${BUILD_URL}"
+                echo "=== Main Branch Build ==="
+                echo "Branch : ${GIT_BRANCH}"
+                echo "Commit : ${GIT_COMMIT}"
             }
         }
 
         stage('Build') {
             steps {
-                echo "Building ${APP_NAME}..."
-                sh 'mkdir -p build'
-                sh 'echo "Build artifact for version ${VERSION}" > build/app.txt'
+                echo "Building main branch..."
+                sh 'ls -la'
+                sh 'mkdir -p build && echo "main-build" > build/output.txt'
                 echo "Build complete"
             }
         }
 
         stage('Test') {
             steps {
-                echo "Running tests for ${APP_NAME}..."
-                sh 'test -f build/app.txt && echo "Artifact exists - OK"'
-                echo "Tests passed"
+                echo "Running full test suite on main..."
+                sh 'test -f build/output.txt && echo "Build output found - OK"'
+                sh 'test -f index.html && echo "index.html found - OK"'
+                echo "All tests passed"
             }
         }
 
-        stage('Package') {
+        stage('Deploy') {
+            when {
+                branch 'main'
+            }
             steps {
-                echo "Packaging version ${VERSION}..."
-                sh 'cat build/app.txt'
-                echo "Package ready"
+                echo "=== Deploying to Staging ==="
+                echo "Branch ${GIT_BRANCH} is main - deploying"
+                echo "Staging deployment complete"
             }
         }
 
     }
 
     post {
+        always {
+            sh 'rm -rf build/'
+            echo "Cleanup done"
+        }
         success {
-            echo "Pipeline PASSED - ${APP_NAME} version ${VERSION} is ready"
+            echo "Main branch build PASSED - artifact deployed to staging"
         }
         failure {
-            echo "Pipeline FAILED - check the logs above for details"
-        }
-        always {
-            echo "Pipeline finished with status: ${currentBuild.result}"
+            echo "Main branch build FAILED"
         }
     }
 }
