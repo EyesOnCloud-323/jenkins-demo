@@ -2,55 +2,58 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = 'lab14-app'
-        VERSION  = "1.0.${BUILD_NUMBER}"
+        BRANCH_NAME_CLEAN = "${GIT_BRANCH}".replaceAll('origin/', '')
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                echo "Starting build for ${APP_NAME} version ${VERSION}"
-                echo "Build URL: ${BUILD_URL}"
+                echo "=== Feature Branch Build ==="
+                echo "Branch : ${GIT_BRANCH}"
+                echo "Commit : ${GIT_COMMIT}"
             }
         }
 
         stage('Build') {
             steps {
-                echo "Building ${APP_NAME}..."
-                sh 'mkdir -p build'
-                sh 'echo "Build artifact for version ${VERSION}" > build/app.txt'
+                echo "Building feature branch..."
+                sh 'ls -la'
+                sh 'mkdir -p build && echo "feature-build" > build/output.txt'
                 echo "Build complete"
             }
         }
 
         stage('Test') {
             steps {
-                echo "Running tests for ${APP_NAME}..."
-                sh 'test -f build/app.txt && echo "Artifact exists - OK"'
-                echo "Tests passed"
+                echo "Running tests on feature branch..."
+                sh 'test -f build/output.txt && echo "Build output found - OK"'
+                echo "Feature branch tests passed"
             }
         }
 
-        stage('Package') {
+        stage('Deploy') {
+            when {
+                branch 'main'
+            }
             steps {
-                echo "Packaging version ${VERSION}..."
-                sh 'cat build/app.txt'
-                echo "Package ready"
+                echo "Deploying to staging..."
+                echo "This stage only runs on main branch"
             }
         }
 
     }
 
     post {
+        always {
+            sh 'rm -rf build/'
+            echo "Cleanup done on ${GIT_BRANCH}"
+        }
         success {
-            echo "Pipeline PASSED - ${APP_NAME} version ${VERSION} is ready"
+            echo "Feature branch build PASSED: ${GIT_BRANCH}"
         }
         failure {
-            echo "Pipeline FAILED - check the logs above for details"
-        }
-        always {
-            echo "Pipeline finished with status: ${currentBuild.result}"
+            echo "Feature branch build FAILED: ${GIT_BRANCH}"
         }
     }
 }
