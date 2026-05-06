@@ -1,42 +1,67 @@
 pipeline {
     agent any
 
+    environment {
+        APP_NAME = 'jenkins-demo'
+        VERSION  = "1.0.${BUILD_NUMBER}"
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
-                echo "=== Main Branch Build ==="
-                echo "Branch : ${GIT_BRANCH}"
-                echo "Commit : ${GIT_COMMIT}"
+                echo "=== ${APP_NAME} Pipeline ==="
+                echo "Branch  : ${GIT_BRANCH}"
+                echo "Commit  : ${GIT_COMMIT}"
+                echo "Version : ${VERSION}"
             }
         }
 
         stage('Build') {
             steps {
-                echo "Building main branch..."
+                echo "Building ${APP_NAME}..."
                 sh 'ls -la'
-                sh 'mkdir -p build && echo "main-build" > build/output.txt'
+                sh 'mkdir -p build && echo "${APP_NAME}-${VERSION}" > build/app.txt'
                 echo "Build complete"
+            }
+            post {
+                success { echo "Build artifact ready" }
+                failure { echo "Build failed" }
             }
         }
 
         stage('Test') {
             steps {
-                echo "Running full test suite on main..."
-                sh 'test -f build/output.txt && echo "Build output found - OK"'
+                echo "Running tests..."
+                sh 'test -f build/app.txt && echo "Artifact found - OK"'
                 sh 'test -f index.html && echo "index.html found - OK"'
-                echo "All tests passed"
+                echo "Tests passed"
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy Staging') {
             when {
                 branch 'main'
             }
             steps {
-                echo "=== Deploying to Staging ==="
-                echo "Branch ${GIT_BRANCH} is main - deploying"
-                echo "Staging deployment complete"
+                echo "=== Deploy to Staging ==="
+                echo "Deploying ${VERSION} to staging..."
+                sh 'cat build/app.txt'
+                echo "Staging deploy complete"
+            }
+        }
+
+        stage('Deploy Production') {
+            when {
+                allOf {
+                    branch 'main'
+                    expression { return env.BUILD_NUMBER.toInteger() > 3 }
+                }
+            }
+            steps {
+                echo "=== Deploy to Production ==="
+                echo "Deploying ${VERSION} to production"
+                echo "Production deploy complete"
             }
         }
 
@@ -48,10 +73,10 @@ pipeline {
             echo "Cleanup done"
         }
         success {
-            echo "Main branch build PASSED - artifact deployed to staging"
+            echo "SUCCESS: ${APP_NAME} ${VERSION} on ${GIT_BRANCH}"
         }
         failure {
-            echo "Main branch build FAILED"
+            echo "FAILURE: ${APP_NAME} ${VERSION} on ${GIT_BRANCH}"
         }
     }
 }
